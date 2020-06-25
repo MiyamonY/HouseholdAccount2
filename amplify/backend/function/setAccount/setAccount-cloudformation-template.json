@@ -1,0 +1,243 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+	"Description": "Lambda resource stack creation using Amplify CLI",
+	"Parameters": {
+		"CloudWatchRule": {
+			"Type": "String",
+			"Default": "NONE",
+			"Description": " Schedule Expression"
+		},
+		"env": {
+			"Type": "String"
+		},
+		"storageaccountsName": {
+			"Type": "String",
+			"Default": "storageaccountsName"
+		},
+		"storageaccountsArn": {
+			"Type": "String",
+			"Default": "storageaccountsArn"
+		}
+	},
+	"Conditions": {
+		"ShouldNotCreateEnvResources": {
+			"Fn::Equals": [
+				{
+					"Ref": "env"
+				},
+				"NONE"
+			]
+		}
+	},
+	"Resources": {
+		"LambdaFunction": {
+			"Type": "AWS::Lambda::Function",
+			"Metadata": {
+				"aws:asset:path": "./src",
+				"aws:asset:property": "Code"
+			},
+			"Properties": {
+				"Handler": "main",
+				"FunctionName": {
+					"Fn::If": [
+						"ShouldNotCreateEnvResources",
+						"setAccount",
+						{
+							"Fn::Join": [
+								"",
+								[
+									"setAccount",
+									"-",
+									{
+										"Ref": "env"
+									}
+								]
+							]
+						}
+					]
+				},
+				"Environment": {
+					"Variables": {
+						"ENV": {
+							"Ref": "env"
+						},
+						"REGION": {
+							"Ref": "AWS::Region"
+						},
+						"STORAGE_ACCOUNTS_NAME": {
+							"Ref": "storageaccountsName"
+						},
+						"STORAGE_ACCOUNTS_ARN": {
+							"Ref": "storageaccountsArn"
+						}
+					}
+				},
+				"Role": {
+					"Fn::GetAtt": [
+						"LambdaExecutionRole",
+						"Arn"
+					]
+				},
+				"Runtime": "go1.x",
+				"Timeout": "25",
+				"Code": {
+					"S3Bucket": "amplify-householdaccount2-dev-220710-deployment",
+					"S3Key": "amplify-builds/setAccount-78696d536f704e2f614e-build.zip"
+				}
+			}
+		},
+		"LambdaExecutionRole": {
+			"Type": "AWS::IAM::Role",
+			"Properties": {
+				"RoleName": {
+					"Fn::If": [
+						"ShouldNotCreateEnvResources",
+						"householdaccount2LambdaRole3879374f",
+						{
+							"Fn::Join": [
+								"",
+								[
+									"householdaccount2LambdaRole3879374f",
+									"-",
+									{
+										"Ref": "env"
+									}
+								]
+							]
+						}
+					]
+				},
+				"AssumeRolePolicyDocument": {
+					"Version": "2012-10-17",
+					"Statement": [
+						{
+							"Effect": "Allow",
+							"Principal": {
+								"Service": [
+									"lambda.amazonaws.com"
+								]
+							},
+							"Action": [
+								"sts:AssumeRole"
+							]
+						}
+					]
+				}
+			}
+		},
+		"lambdaexecutionpolicy": {
+			"DependsOn": [
+				"LambdaExecutionRole"
+			],
+			"Type": "AWS::IAM::Policy",
+			"Properties": {
+				"PolicyName": "lambda-execution-policy",
+				"Roles": [
+					{
+						"Ref": "LambdaExecutionRole"
+					}
+				],
+				"PolicyDocument": {
+					"Version": "2012-10-17",
+					"Statement": [
+						{
+							"Effect": "Allow",
+							"Action": [
+								"logs:CreateLogGroup",
+								"logs:CreateLogStream",
+								"logs:PutLogEvents"
+							],
+							"Resource": {
+								"Fn::Sub": [
+									"arn:aws:logs:${region}:${account}:log-group:/aws/lambda/${lambda}:log-stream:*",
+									{
+										"region": {
+											"Ref": "AWS::Region"
+										},
+										"account": {
+											"Ref": "AWS::AccountId"
+										},
+										"lambda": {
+											"Ref": "LambdaFunction"
+										}
+									}
+								]
+							}
+						}
+					]
+				}
+			}
+		},
+		"AmplifyResourcesPolicy": {
+			"DependsOn": [
+				"LambdaExecutionRole"
+			],
+			"Type": "AWS::IAM::Policy",
+			"Properties": {
+				"PolicyName": "amplify-lambda-execution-policy",
+				"Roles": [
+					{
+						"Ref": "LambdaExecutionRole"
+					}
+				],
+				"PolicyDocument": {
+					"Version": "2012-10-17",
+					"Statement": [
+						{
+							"Effect": "Allow",
+							"Action": [
+								"dynamodb:Put*",
+								"dynamodb:Create*",
+								"dynamodb:BatchWriteItem",
+								"dynamodb:Update*",
+								"dynamodb:RestoreTable*",
+								"dynamodb:Delete*"
+							],
+							"Resource": [
+								{
+									"Ref": "storageaccountsArn"
+								},
+								{
+									"Fn::Join": [
+										"/",
+										[
+											{
+												"Ref": "storageaccountsArn"
+											},
+											"index/*"
+										]
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		}
+	},
+	"Outputs": {
+		"Name": {
+			"Value": {
+				"Ref": "LambdaFunction"
+			}
+		},
+		"Arn": {
+			"Value": {
+				"Fn::GetAtt": [
+					"LambdaFunction",
+					"Arn"
+				]
+			}
+		},
+		"Region": {
+			"Value": {
+				"Ref": "AWS::Region"
+			}
+		},
+		"LambdaExecutionRole": {
+			"Value": {
+				"Ref": "LambdaExecutionRole"
+			}
+		}
+	}
+}

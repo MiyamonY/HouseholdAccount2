@@ -1,0 +1,20 @@
+{
+    "dev": {
+        "awscloudformation": {
+            "AuthRoleName": "amplify-householdaccount2-dev-220710-authRole",
+            "UnauthRoleArn": "arn:aws:iam::448746263282:role/amplify-householdaccount2-dev-220710-unauthRole",
+            "AuthRoleArn": "arn:aws:iam::448746263282:role/amplify-householdaccount2-dev-220710-authRole",
+            "Region": "ap-northeast-1",
+            "DeploymentBucketName": "amplify-householdaccount2-dev-220710-deployment",
+            "UnauthRoleName": "amplify-householdaccount2-dev-220710-unauthRole",
+            "StackName": "amplify-householdaccount2-dev-220710",
+            "StackId": "arn:aws:cloudformation:ap-northeast-1:448746263282:stack/amplify-householdaccount2-dev-220710/49b26a10-b489-11ea-a035-0ac3b391d020",
+            "AmplifyAppId": "dd9lv5mwcic4w"
+        },
+        "categories": {
+            "auth": {
+                "cognitobf18df10": {}
+            }
+        }
+    }
+}

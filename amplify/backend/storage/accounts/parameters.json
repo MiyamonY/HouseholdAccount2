@@ -1,0 +1,7 @@
+{
+  "tableName": "accounts0",
+  "partitionKeyName": "date",
+  "partitionKeyType": "S",
+  "sortKeyName": "type",
+  "sortKeyType": "S"
+}
