@@ -17,10 +17,6 @@ let configureApp (app : IApplicationBuilder) =
     app.UseGiraffeErrorHandler(errorHandler)
        .UseGiraffe handler
 
-    // use scope = app.ApplicationServices.CreateScope()
-    // use context = scope.ServiceProvider.GetService<AccountContext>()
-    // context.Database.EnsureCreated() |> ignore
-
 let configureServices (services : IServiceCollection) =
     // Add Giraffe dependencies
     services.AddGiraffe() |> ignore
