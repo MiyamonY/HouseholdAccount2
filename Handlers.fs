@@ -22,12 +22,26 @@ let errorHandler (ex : Exception) (logger : ILogger) =
     | _ -> clearResponse >=> ServerErrors.INTERNAL_ERROR ex.Message
 
 
-let accounts : HttpHandler =
-    handleContext(fun context ->
+[<CLIMutable>]
+type IntervalRequest =
+    {
+        From: DateTime
+        To: DateTime
+    }
+
+let getAccounts : HttpHandler =
+    fun (next:HttpFunc) (context:HttpContext) ->
         let dbContext = getDBContext context
-        let accounts = Models.getAccounts dbContext
-        accounts |> context.WriteJsonAsync
-    )
+        task {
+            match context.TryGetQueryStringValue "from", context.TryGetQueryStringValue "to" with
+            | None, None ->
+                let accounts = Models.getAccounts dbContext
+                return! accounts |> context.WriteJsonAsync
+            | Some _, Some _ ->
+                let interval = context.BindQueryString<IntervalRequest>()
+                return! Models.getAccountsInterval dbContext interval.From interval.To |> context.WriteJsonAsync
+            | _, _ ->  return! RequestErrors.BAD_REQUEST { Error= "invalid query paramters" } next context
+        }
 
 [<CLIMutable>]
 type AccountRequest =
@@ -77,7 +91,7 @@ let deleteAccount (id:int) : HttpHandler =
         }
 
 let handler: HttpHandler =
-    choose [GET >=> route "/api/v1/accounts" >=> accounts;
+    choose [GET >=> route "/api/v1/accounts" >=> getAccounts;
             POST >=> route "/api/v1/account" >=> addAccount;
             PATCH >=> routef "/api/v1/account/%i" updateAccount;
             DELETE >=> routef "/api/v1/account/%i" deleteAccount]

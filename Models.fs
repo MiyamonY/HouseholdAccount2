@@ -1,6 +1,7 @@
 module Models
 
 open System
+open System.Linq
 open Microsoft.EntityFrameworkCore
 open FSharp.Control.Tasks.V2.ContextInsensitive
 
@@ -45,6 +46,13 @@ type AccountContext() =
         and set v = this.accounts <- v
 
 let getAccounts (context:AccountContext) = context.Accounts
+
+let getAccountsInterval (context:AccountContext) (from:DateTime) (to_:DateTime) =
+    query {
+        for account in context.Accounts do
+        where (from <= account.UsedDate && account.UsedDate < to_)
+        select account
+    } |> Seq.cast
 
 let addAccount (context:AccountContext) (entity:Account) =
     task {
