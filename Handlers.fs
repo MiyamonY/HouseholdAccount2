@@ -22,6 +22,16 @@ let errorHandler (ex : Exception) (logger : ILogger) =
     | _ -> clearResponse >=> ServerErrors.INTERNAL_ERROR ex.Message
 
 
+let getAccount (id : int) : HttpHandler =
+    fun (next : HttpFunc) (context : HttpContext) ->
+        let dbContext = getDBContext context
+        task {
+            let! result = Models.getAccount dbContext id
+            match result with
+            | Ok account -> return! account |> context.WriteJsonAsync
+            | Error msg -> return! ServerErrors.INTERNAL_ERROR { Error = msg } next context
+        }
+
 [<CLIMutable>]
 type IntervalRequest =
     {
@@ -36,11 +46,12 @@ let getAccounts : HttpHandler =
             match context.TryGetQueryStringValue "from", context.TryGetQueryStringValue "to" with
             | None, None ->
                 let accounts = Models.getAccounts dbContext
-                return! accounts |> context.WriteJsonAsync
+                return! context.WriteJsonAsync accounts
             | Some _, Some _ ->
                 let interval = context.BindQueryString<IntervalRequest>()
-                return! Models.getAccountsInterval dbContext interval.From interval.To |> context.WriteJsonAsync
-            | _, _ ->  return! RequestErrors.BAD_REQUEST { Error= "invalid query paramters" } next context
+                let accounts = Models.getAccountsInterval dbContext interval.From interval.To
+                return! context.WriteJsonAsync accounts
+            | _, _ ->  return! RequestErrors.BAD_REQUEST { Error = "invalid query paramters" } next context
         }
 
 [<CLIMutable>]
@@ -65,7 +76,7 @@ let addAccount : HttpHandler =
             let! result = Models.addAccount dbContext <| req.BindModelAccount ()
             return! (match result with
                      | Ok _ -> Successful.NO_CONTENT
-                     | Error msg -> ServerErrors.INTERNAL_ERROR { Error=msg}) next context
+                     | Error msg -> ServerErrors.INTERNAL_ERROR { Error=msg }) next context
         }
 
 let updateAccount (id:int) : HttpHandler =
@@ -91,7 +102,8 @@ let deleteAccount (id:int) : HttpHandler =
         }
 
 let handler: HttpHandler =
-    choose [GET >=> route "/api/v1/accounts" >=> getAccounts;
+    choose [GET >=> choose [route "/api/v1/accounts" >=> getAccounts;
+                            routef "/api/v1/account/%i" getAccount];
             POST >=> route "/api/v1/account" >=> addAccount;
             PATCH >=> routef "/api/v1/account/%i" updateAccount;
             DELETE >=> routef "/api/v1/account/%i" deleteAccount]

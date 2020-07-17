@@ -45,14 +45,23 @@ type AccountContext() =
         with get() = this.accounts
         and set v = this.accounts <- v
 
-let getAccounts (context:AccountContext) = context.Accounts
+let getAccount (context:AccountContext) (id:ID) =
+    task {
+        let! found = context.Accounts.FindAsync(id)
+        return (match box found with
+                | null ->  (Error (sprintf "account(id=%d) not found" id))
+                | _ ->  Ok found)
+    }
+
+let getAccounts (context:AccountContext) =
+    context.Accounts
 
 let getAccountsInterval (context:AccountContext) (from:DateTime) (to_:DateTime) =
     query {
         for account in context.Accounts do
         where (from <= account.UsedDate && account.UsedDate < to_)
         select account
-    } |> Seq.cast
+    }
 
 let addAccount (context:AccountContext) (entity:Account) =
     task {
