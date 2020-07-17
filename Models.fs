@@ -30,13 +30,11 @@ type Account =
         let now = DateTime.Now
         { ID=0; CreatedDate=now; UpdatedDate=now; Name=name; Type=type_; UsedDate = usedDate; Amount=amount }
 
-type AccountContext() =
-    inherit DbContext()
+type AccountContext(options : DbContextOptions<AccountContext>) =
+    inherit DbContext(options)
+
     override this.OnModelCreating(build: ModelBuilder) =
         ()
-
-    override _.OnConfiguring(optionsBuilder: DbContextOptionsBuilder) =
-        optionsBuilder.UseSqlite("Data Source=account.db") |> ignore
 
     [<DefaultValue>]
     val mutable accounts:DbSet<Account>

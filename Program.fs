@@ -8,6 +8,7 @@ open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Logging
 open FSharp.Control.Tasks.V2.ContextInsensitive
+open Microsoft.EntityFrameworkCore
 open Giraffe
 open Handlers
 open Models
@@ -20,7 +21,9 @@ let configureApp (app : IApplicationBuilder) =
 let configureServices (services : IServiceCollection) =
     // Add Giraffe dependencies
     services.AddGiraffe() |> ignore
-    services.AddDbContext<AccountContext>() |> ignore
+    services.AddDbContext<AccountContext>(
+        fun (option : DbContextOptionsBuilder) ->
+        option.UseSqlite("Data Source=account.db") |> ignore) |> ignore
 
 let configureLogging (builder : ILoggingBuilder) =
     builder.AddConsole().AddDebug() |> ignore
