@@ -4,6 +4,7 @@ open System
 open System.IO
 open System.Text
 open System.Threading.Tasks
+open System.Collections.Generic
 open Microsoft.Data.Sqlite
 open Microsoft.Extensions.Primitives
 open FSharp.Control.Tasks.V2.ContextInsensitive
@@ -69,6 +70,10 @@ let addServices (context : HttpContext) (db : DbContext) =
            .GetService(typeof<INegotiationConfig>)
            .Returns(DefaultNegotiationConfig() :> INegotiationConfig) |> ignore
 
+let queries (queries : (string*string) list)=
+    let dict = Dictionary<string, StringValues>()
+    List.iter (fun ((k, v) : (string*string)) -> dict.Add(k, StringValues(v))) queries
+    QueryCollection(dict)
 
 [<Fact>]
 let ``Get all accounts`` () =
@@ -93,6 +98,36 @@ let ``Get all accounts`` () =
         result.Value |> getStatusCode |> should equal 200
         result.Value |> getBody |> should equal expected
     }
+
+[<Fact>]
+let ``Get accounts in interval`` () =
+    let ctx = Substitute.For<HttpContext>()
+    ctx.Request.Method.ReturnsForAnyArgs("GET") |> ignore
+    ctx.Request.Path.ReturnsForAnyArgs(PathString("/api/v1/accounts")) |> ignore
+    let qs = queries [("from", "2020/7/1T00:00:00.000"); ("to", "2020/8/1T00:00:00.000")]
+    ctx.Request.Query.ReturnsForAnyArgs(qs) |> ignore
+    ctx.Response.Body <- new MemoryStream()
+
+    let account0 = Models.Account.Create "test" Models.Type.Foods (DateTime(2020, 6, 1)) 100
+    let account1 = Models.Account.Create "test" Models.Type.Foods (DateTime(2020, 7, 1)) 100
+    let account2 = Models.Account.Create "test" Models.Type.Foods (DateTime(2020, 7, 2)) 100
+    let account3 = Models.Account.Create "test" Models.Type.Foods (DateTime(2020, 8, 1)) 100
+    createAndInitalizeDb (fun context ->
+                          context.Accounts.Update account0 |> ignore
+                          context.Accounts.Update account1 |> ignore
+                          context.Accounts.Update account2 |> ignore
+                          context.Accounts.Update account3 |> ignore
+                          context.SaveChanges true |> ignore)
+    |> addServices ctx
+
+    task  {
+        let! result = Handlers.routes next ctx
+
+        let expected = serializeToJson [account1; account2]
+        result.Value |> getStatusCode |> should equal 200
+        result.Value |> getBody |> should equal expected
+    }
+
 
 [<Fact>]
 let ``Get an account`` () =
