@@ -87,7 +87,7 @@ let updateAccount (id:int) : HttpHandler =
             let! result = Models.updateAccount dbContext id <| req.BindModelAccount ()
             return! (match result with
                      | Ok _ -> Successful.NO_CONTENT
-                     | Error msg -> ServerErrors.INTERNAL_ERROR {Error=msg}) next context
+                     | Error msg -> RequestErrors.BAD_REQUEST {Error=msg}) next context
         }
 
 let deleteAccount (id:int) : HttpHandler =

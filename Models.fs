@@ -86,10 +86,10 @@ let deleteAccount (context:AccountContext) (id:ID) =
     task {
         let! found = context.Accounts.FindAsync(id)
         match box found with
-        | null -> return (Error (sprintf "account@%d not found" id))
+        | null -> return (Error (sprintf "account(id=%d) not found" id))
         | _ ->
             let _ = context.Accounts.Remove(found)
 
             let! result = context.SaveChangesAsync true
-            return if result >= 1 then Ok found else Error (sprintf "account@%d not found" id)
+            return if result >= 1 then Ok found else Error "datbase error"
     }

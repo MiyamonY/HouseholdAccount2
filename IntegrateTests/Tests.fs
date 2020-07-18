@@ -123,11 +123,30 @@ let ``Get accounts in interval`` () =
     task  {
         let! result = Handlers.routes next ctx
 
-        let expected = serializeToJson [account1; account2]
         result.Value |> getStatusCode |> should equal 200
+        let expected = serializeToJson [account1; account2]
         result.Value |> getBody |> should equal expected
     }
 
+[<Fact>]
+let ``Invalid response when query prameters are wrong`` () =
+    let ctx = Substitute.For<HttpContext>()
+    ctx.Request.Method.ReturnsForAnyArgs("GET") |> ignore
+    ctx.Request.Path.ReturnsForAnyArgs(PathString("/api/v1/accounts")) |> ignore
+    let qs = queries [("from", "2020/7/1T00:00:00.000")]
+    ctx.Request.Query.ReturnsForAnyArgs(qs) |> ignore
+    ctx.Response.Body <- new MemoryStream()
+
+    let account0 = Models.Account.Create "test" Models.Type.Foods (DateTime(2020, 6, 1)) 100
+    createAndInitalizeDb (fun context ->
+                          context.Accounts.Update account0 |> ignore
+                          context.SaveChanges true |> ignore)
+    |> addServices ctx
+
+    task  {
+        let! result = Handlers.routes next ctx
+        result.Value |> getStatusCode |> should equal 400
+    }
 
 [<Fact>]
 let ``Get an account`` () =
@@ -164,9 +183,11 @@ let ``Can't get account if not account existed`` () =
     task {
         let! result = Handlers.routes next ctx
 
+        result.Value |> getStatusCode |> should equal 500
         let expected = """{"error":"account(id=1) not found"}"""
         result.Value |> getBody |> should equal expected
     }
+
 
 [<Fact>]
 let ``Create account`` () =
@@ -238,7 +259,7 @@ let ``Update account`` () =
     }
 
 [<Fact>]
-let ``Can't update account if not account exists`` () =
+let ``Can't update account if account does not exist`` () =
     let ctx = Substitute.For<HttpContext>()
 
     let account = Models.Account.Create "test" Models.Type.Foods DateTime.Today 100
@@ -262,7 +283,8 @@ let ``Can't update account if not account exists`` () =
 
     task {
         let! result = Handlers.routes next ctx
-        result.Value |> getStatusCode |> should equal 500
+
+        result.Value |> getStatusCode |> should equal 400
         result.Value |> getBody |> should equal """{"error":"account(id=1) not found"}"""
     }
 
@@ -281,9 +303,24 @@ let ``Delete account`` () =
                           context.SaveChanges true |> ignore)
     |> addServices ctx
 
-    let app = DELETE >=> routef "/api/v1/account/%i" Handlers.deleteAccount
+    task {
+        let! result = Handlers.routes next ctx
+        result.Value |> getStatusCode |> should equal 204
+    }
+
+[<Fact>]
+let ``Can't delete account if account does not exist`` () =
+    let ctx = Substitute.For<HttpContext>()
+    ctx.Request.Method.ReturnsForAnyArgs("DELETE") |> ignore
+    ctx.Request.Path.ReturnsForAnyArgs(PathString("/api/v1/account/1")) |> ignore
+    ctx.Response.Body <- new MemoryStream()
+
+    createAndInitalizeDb (fun _ -> ())
+    |> addServices ctx
 
     task {
-        let! result = app next ctx
-        result.Value |> getStatusCode |> should equal 204
+        let! result = Handlers.routes next ctx
+
+        result.Value |> getStatusCode |> should equal 400
+        result.Value |> getBody |> should equal """{"error":"account(id=1) not found"}"""
     }
