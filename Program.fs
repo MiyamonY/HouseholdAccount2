@@ -10,13 +10,12 @@ open Microsoft.Extensions.Logging
 open FSharp.Control.Tasks.V2.ContextInsensitive
 open Microsoft.EntityFrameworkCore
 open Giraffe
-open Handlers
 open Models
 
 let configureApp (app : IApplicationBuilder) =
     // Add Giraffe to the ASP.NET Core pipeline
-    app.UseGiraffeErrorHandler(errorHandler)
-       .UseGiraffe handler
+    app.UseGiraffeErrorHandler(Handlers.errorHandler)
+       .UseGiraffe Handlers.routes
 
 let configureServices (services : IServiceCollection) =
     // Add Giraffe dependencies

@@ -73,10 +73,10 @@ let updateAccount (context:AccountContext) (id:ID) (entity:Account) =
     task {
         let! found = context.Accounts.FindAsync(id)
         match box found with
-        | null -> return (Error (sprintf "account@%d not found" id))
+        | null -> return (Error (sprintf "account(id=%d) not found" id))
         | _ ->
-            let updated = {found with ID=id}
-            let entity = context.Accounts.Update(updated)
+            let updated = {found with Name=entity.Name; Type=entity.Type;Amount=entity.Amount; UpdatedDate=DateTime.Now}
+            context.Entry(found).CurrentValues.SetValues(updated)
 
             let! result = context.SaveChangesAsync true
             return if result >= 1 then Ok entity else Error "database error"

@@ -12,9 +12,15 @@
     <Compile Include="Program.fs" />
   </ItemGroup>
 
+  <PropertyGroup>
+    <EnvironmentName>Development</EnvironmentName>
+    <DefaultItemExcludes>.git\**;$(DefaultItemExcludes)</DefaultItemExcludes>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="FsUnit" Version="3.9.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.5.0" />
+    <PackageReference Include="NSubstitute" Version="4.2.2" />
     <PackageReference Include="xunit" Version="2.4.0" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.4.0" />
     <PackageReference Include="coverlet.collector" Version="1.2.0" />
@@ -23,5 +29,4 @@
   <ItemGroup>
     <ProjectReference Include="..\HouseholdAccount2.fsproj" />
   </ItemGroup>
-
 </Project>

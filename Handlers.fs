@@ -27,9 +27,9 @@ let getAccount (id : int) : HttpHandler =
         let dbContext = getDBContext context
         task {
             let! result = Models.getAccount dbContext id
-            match result with
-            | Ok account -> return! account |> context.WriteJsonAsync
-            | Error msg -> return! ServerErrors.INTERNAL_ERROR { Error = msg } next context
+            return! (match result with
+                     | Ok account -> Successful.ok (json account)
+                     | Error msg -> ServerErrors.INTERNAL_ERROR { Error = msg }) next context
         }
 
 [<CLIMutable>]
@@ -43,15 +43,15 @@ let getAccounts : HttpHandler =
     fun (next:HttpFunc) (context:HttpContext) ->
         let dbContext = getDBContext context
         task {
-            match context.TryGetQueryStringValue "from", context.TryGetQueryStringValue "to" with
-            | None, None ->
-                let accounts = Models.getAccounts dbContext
-                return! context.WriteJsonAsync accounts
-            | Some _, Some _ ->
-                let interval = context.BindQueryString<IntervalRequest>()
-                let accounts = Models.getAccountsInterval dbContext interval.From interval.To
-                return! context.WriteJsonAsync accounts
-            | _, _ ->  return! RequestErrors.BAD_REQUEST { Error = "invalid query paramters" } next context
+            return! (match context.TryGetQueryStringValue "from", context.TryGetQueryStringValue "to" with
+                     | None, None ->
+                         let accounts = Models.getAccounts dbContext
+                         Successful.ok (json accounts)
+                     | Some _, Some _ ->
+                         let interval = context.BindQueryString<IntervalRequest>()
+                         let accounts = Models.getAccountsInterval dbContext interval.From interval.To
+                         Successful.ok (json  accounts)
+                     | _, _ ->  RequestErrors.BAD_REQUEST { Error = "invalid query paramters" }) next context
         }
 
 [<CLIMutable>]
@@ -65,7 +65,6 @@ type AccountRequest =
 
     member this.BindModelAccount () =
         Models.Account.Create this.Name this.Type this.UsedDate this.Amount
-
 
 let addAccount : HttpHandler =
     fun (next:HttpFunc) (context:HttpContext) ->
@@ -101,7 +100,7 @@ let deleteAccount (id:int) : HttpHandler =
                      | Error msg -> RequestErrors.BAD_REQUEST {Error = msg}) next context
         }
 
-let handler: HttpHandler =
+let routes: HttpHandler =
     choose [GET >=> choose [route "/api/v1/accounts" >=> getAccounts;
                             routef "/api/v1/account/%i" getAccount];
             POST >=> route "/api/v1/account" >=> addAccount;
